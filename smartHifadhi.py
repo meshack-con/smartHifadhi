@@ -1,13 +1,14 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import google.generativeai as genai
+import time
 
 # ==========================================
 # 1. SETUP & CONFIGURATION
 # ==========================================
-st.set_page_config(page_title="Smart-Hifadhi AI Hub", layout="wide")
+st.set_page_config(page_title="Smart-Hifadhi AI HUB", layout="wide")
 
-# API Keys
+# API Keys (Tumia Key yako hapa)
 API_KEY = "AIzaSyBfbbjW6osrLr-MsRdNlju-aERfYdzkaWk"
 genai.configure(api_key=API_KEY)
 
@@ -19,15 +20,16 @@ st.markdown("""
         .block-container { padding: 0rem !important; }
         header, footer { visibility: hidden !important; }
         .main { background-color: #f8fafc; }
+        .stAlert { border-radius: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. DASHBOARD HTML (Miamala, Kutoa & Purchase)
+# 2. DASHBOARD HTML (Miamala & Visuals)
 # ==========================================
 html_code = f"""
 <!DOCTYPE html>
-<html lang="sw">
+<html>
 <head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -35,20 +37,21 @@ html_code = f"""
         :root {{ --primary: #4361ee; --success: #2ecc71; --danger: #e74c3c; --dark: #0f172a; --ai: #f1c40f; }}
         body {{ font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; padding: 10px; }}
         .nav {{ background: var(--dark); color: white; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }}
-        .grid-stats {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }}
+        .grid-stats {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }}
         .stat-card {{ background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-bottom: 4px solid var(--primary); }}
         .amount {{ font-size: 1.4rem; font-weight: 800; display: block; }}
         .layout {{ display: grid; grid-template-columns: 1fr 1.6fr; gap: 20px; }}
         .card {{ background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
         input, select {{ width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }}
-        .btn {{ width: 100%; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; margin-top: 10px; }}
-        h4 {{ margin: 0 0 10px 0; color: #64748b; font-size: 0.8rem; text-transform: uppercase; }}
+        .btn {{ width: 100%; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }}
+        .btn:active {{ transform: scale(0.98); }}
+        h4 {{ margin: 0 0 10px 0; color: #64748b; font-size: 0.75rem; text-transform: uppercase; }}
     </style>
 </head>
 <body>
     <div class="nav">
         <div style="font-weight: 800;">SMART-HIFADHI AI HUB 💎</div>
-        <div id="status">Syncing...</div>
+        <div id="status" style="font-size:0.8rem">Cloud Syncing...</div>
     </div>
 
     <div class="grid-stats">
@@ -124,12 +127,14 @@ html_code = f"""
 
     function updateChart(b) {{
         new Chart(document.getElementById('hubChart'), {{
-            type: 'doughnut',
+            type: 'bar',
             data: {{
                 labels: ['Invest', 'Essentials', 'Life', 'Emergency', 'Tithe'],
                 datasets: [{{
+                    label: 'TSH',
                     data: [b.invest_acc, b.essential_acc, b.life_acc, b.emergency_acc, b.tithe_acc],
-                    backgroundColor: ['#2ecc71', '#4361ee', '#f1c40f', '#e74c3c', '#9b59b6']
+                    backgroundColor: ['#2ecc71', '#4361ee', '#f1c40f', '#e74c3c', '#9b59b6'],
+                    borderRadius: 8
                 }}]
             }},
             options: {{ maintainAspectRatio: false }}
@@ -142,56 +147,52 @@ html_code = f"""
 components.html(html_code, height=620)
 
 # ==========================================
-# 3. AI HUB: PREDICTION, ANALYSIS & ADVICE
+# 3. AI HUB: ANALYSIS, PREDICTION & QUOTA FIX
 # ==========================================
 st.divider()
 st.subheader("🧠 Smart-Hifadhi AI Analysis Hub")
 
-# Sehemu ya Kuchagua Kazi ya AI
 option = st.selectbox("Chagua Kazi ya AI:", 
                       ["Uchambuzi wa Matumizi (Analysis)", 
                        "Utabiri wa Akiba ya Baadaye (Prediction)", 
                        "Ushauri wa Kifedha (Financial Advice)"])
 
-if "ai_messages" not in st.session_state:
-    st.session_state.ai_messages = []
-
-# Kuchakata AI
 if st.button("Anza Uchambuzi wa AI"):
-    with st.spinner("AI Hub inasoma data zako halisi..."):
+    with st.spinner("AI Hub inasoma data..."):
         try:
-            # Tafuta modeli
+            # 1. Tafuta modeli inayofanya kazi
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             selected_model = next((m for m in available_models if 'flash' in m), available_models[0])
             model = genai.GenerativeModel(selected_model)
 
-            # Context ya AI (System Instruction)
-            base_prompt = f"Wewe ni Smart-Hifadhi AI Hub. Kazi yako ni kufanya {option}. "
+            # 2. Tengeneza maombi (Prompt)
+            prompt = f"Wewe ni mshauri wa fedha. Fanya {option} kwa Kiswahili. Toa ushauri mfupi na wa vitendo."
             
-            if option == "Uchambuzi wa Matumizi (Analysis)":
-                task_prompt = "Chambua mgao wa 50/20/10/10/10 na uniambie kama matumizi yangu ni salama."
-            elif option == "Utabiri wa Akiba ya Baadaye (Prediction)":
-                task_prompt = "Kama nitaendelea kuweka kiasi hiki kila mwezi, nitakuwa na kiasi gani baada ya miezi 6? Tabiri maendeleo yangu."
-            else:
-                task_prompt = "Nipe ushauri wa kibiashara na uwekezaji kulingana na salio langu la sasa."
-
-            response = model.generate_content(f"{base_prompt}\n{task_prompt}. Jibu kwa Kiswahili fasaha na kifupi.")
+            # 3. Piga API na Kinga ya Quota (429)
+            response = model.generate_content(prompt)
             st.info(response.text)
-            
-        except Exception as e:
-            st.error(f"Hitilafu: {str(e)}")
 
-# Chat Input kwa maswali mengine
+        except Exception as e:
+            if "429" in str(e):
+                st.error("⚠️ Kikomo cha bure kimefikiwa (Quota Exceeded). Tafadhali subiri dakika moja kisha ujaribu tena.")
+                st.toast("Subiri sekunde 60...", icon="⏳")
+            else:
+                st.error(f"Hitilafu: {str(e)}")
+
+# Sehemu ya Chat ya kawaida
 st.write("---")
-if user_query := st.chat_input("Uliza swali lolote kuhusu bajeti yako..."):
-    with st.chat_message("user"): st.write(user_query)
+if query := st.chat_input("Uliza swali lolote la kifedha hapa..."):
+    with st.chat_message("user"): st.write(query)
     with st.chat_message("assistant"):
         try:
             available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             selected_model = next((m for m in available_models if 'flash' in m), available_models[0])
             model = genai.GenerativeModel(selected_model)
             
-            res = model.generate_content(f"Mtumiaji anasema: {user_query}. Jibu kama mshauri wa fedha kwa Kiswahili.")
+            res = model.generate_content(f"Jibu kwa Kiswahili: {query}")
             st.write(res.text)
-        except:
-            st.error("AI imeshindwa kuunganisha.")
+        except Exception as e:
+            if "429" in str(e):
+                st.warning("Google inapumzika kidogo (Quota Limit). Jaribu baada ya muda mfupi.")
+            else:
+                st.error("AI haijapatikana.")
